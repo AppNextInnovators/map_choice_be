@@ -39,11 +39,11 @@ Resolves a place to coordinates.
 ```
 
 **Required headers:**
-| Header | Description |
-|--------|-------------|
-| `X-Firebase-AppCheck` | Firebase App Check token |
-| `X-Request-Nonce` | UUID, one-time use |
-| `X-Request-Timestamp` | Unix ms, must be within ±5 min of server |
+| Header                | Description                                  |
+| --------------------- | -------------------------------------------- |
+| `X-Firebase-AppCheck` | Firebase App Check token                     |
+| `X-Request-Nonce`     | UUID, one-time use                           |
+| `X-Request-Timestamp` | Unix ms, must be within ±5 min of server     |
 | `X-Request-Signature` | `SHA256(token:nonce:timestamp:SHA256(body))` |
 
 **Success response:**
@@ -82,22 +82,22 @@ Set `SKIP_APP_CHECK=true` in `.env` to bypass App Check during local development
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `FIREBASE_PROJECT_ID` | yes | — | Firebase project ID |
-| `FIREBASE_CLIENT_EMAIL` | yes | — | Service account email |
-| `FIREBASE_PRIVATE_KEY` | yes | — | Service account private key |
-| `GOOGLE_GEOCODING_API_KEY` | yes | — | Google Places/Geocoding API key |
-| `NODE_ENV` | yes | — | `development` or `production` |
-| `PORT` | no | `3000` | HTTP port (Railway injects this automatically) |
-| `SKIP_APP_CHECK` | no | `false` | Bypass App Check in development only |
-| `DAILY_REQUEST_LIMIT` | no | `20` | Per-user daily geocoding limit |
-| `MONTHLY_REQUEST_LIMIT` | no | `200` | Per-user monthly geocoding limit |
-| `GLOBAL_GEOCODING_LIMIT` | no | `10000` | Global monthly geocoding limit |
-| `RATE_LIMIT_WINDOW_MINUTES` | no | `1` | IP rate limit window |
-| `RATE_LIMIT_MAX` | no | `60` | Max requests per IP per window |
-| `LOG_LEVEL` | no | `info` (prod) / `debug` (dev) | Pino log level |
-| `ALLOWED_ORIGINS` | no | — | Comma-separated CORS origins |
+| Variable                    | Required | Default                       | Description                                    |
+| --------------------------- | -------- | ----------------------------- | ---------------------------------------------- |
+| `FIREBASE_PROJECT_ID`       | yes      | —                             | Firebase project ID                            |
+| `FIREBASE_CLIENT_EMAIL`     | yes      | —                             | Service account email                          |
+| `FIREBASE_PRIVATE_KEY`      | yes      | —                             | Service account private key                    |
+| `GOOGLE_GEOCODING_API_KEY`  | yes      | —                             | Google Places/Geocoding API key                |
+| `NODE_ENV`                  | yes      | —                             | `development` or `production`                  |
+| `PORT`                      | no       | `3000`                        | HTTP port (Railway injects this automatically) |
+| `SKIP_APP_CHECK`            | no       | `false`                       | Bypass App Check in development only           |
+| `DAILY_REQUEST_LIMIT`       | no       | `20`                          | Per-user daily geocoding limit                 |
+| `MONTHLY_REQUEST_LIMIT`     | no       | `200`                         | Per-user monthly geocoding limit               |
+| `GLOBAL_GEOCODING_LIMIT`    | no       | `10000`                       | Global monthly geocoding limit                 |
+| `RATE_LIMIT_WINDOW_MINUTES` | no       | `1`                           | IP rate limit window                           |
+| `RATE_LIMIT_MAX`            | no       | `60`                          | Max requests per IP per window                 |
+| `LOG_LEVEL`                 | no       | `info` (prod) / `debug` (dev) | Pino log level                                 |
+| `ALLOWED_ORIGINS`           | no       | —                             | Comma-separated CORS origins                   |
 
 ## Scripts
 
@@ -114,10 +114,10 @@ npm run format:check  # Prettier (check only)
 
 ## Git Hooks (Husky)
 
-| Hook | What it does |
-|------|-------------|
+| Hook         | What it does                                                                    |
+| ------------ | ------------------------------------------------------------------------------- |
 | `pre-commit` | Runs lint-staged (Prettier + ESLint) on staged `.ts` files, then `tsc --noEmit` |
-| `pre-push` | Blocks direct pushes to `main`; runs full test suite |
+| `pre-push`   | Blocks direct pushes to `main`; runs full test suite                            |
 
 ## Deployment (Railway)
 
