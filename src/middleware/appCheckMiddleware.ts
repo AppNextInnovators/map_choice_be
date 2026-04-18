@@ -252,11 +252,7 @@ export const appCheckMiddleware = async (req: Request, res: Response, next: Next
 export const appCheckSecureMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // Development bypass: Skip App Check verification if explicitly enabled
   // Double-check: never allow skip in production, even if env vars are misconfigured
-  if (
-    process.env.NODE_ENV === "development" &&
-    process.env.SKIP_APP_CHECK === "true" &&
-    process.env.NODE_ENV !== "production"
-  ) {
+  if (process.env.NODE_ENV === "development" && process.env.SKIP_APP_CHECK === "true") {
     logger.warn({ path: req.path }, "app_check_skipped_dev_mode");
     next();
     return;
