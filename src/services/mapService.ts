@@ -1,135 +1,91 @@
-import puppeteer from "puppeteer";
+import { logger } from "../lib/logger";
+
+export interface GeocodeResult {
+  coords: { lat: number; lng: number } | null;
+  billable: boolean;
+}
 
 export class MapService {
-  extractCoordinates(url: string): { lat: number; lng: number } | null {
+  // Place Details lookup by Place ID — deterministic, no ambiguity vs text search.
+  // Uses "Location Only" field mask (cheapest SKU).
+  private async fetchByPlaceId(placeId: string, apiKey: string): Promise<GeocodeResult> {
     try {
-      // Remove any whitespace
-      const cleanUrl = url.trim();
+      logger.debug({ placeId }, "places_details_start");
 
-      // Pattern 1: Google Maps ?q=lat,lng or ?q=lat,lng
-      const qPattern = /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/;
-      let match = cleanUrl.match(qPattern);
-      if (match) {
-        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+        signal: controller.signal,
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "location",
+        },
+      });
+      clearTimeout(timeoutId);
+
+      // 4xx/5xx — not billable by Google
+      if (!response.ok) return { coords: null, billable: false };
+
+      // 2xx — billable by Google, even if no location data
+      const data = (await response.json()) as {
+        location?: { latitude: number; longitude: number };
+      };
+      if (!data.location) return { coords: null, billable: true };
+
+      logger.debug({ placeId }, "places_details_end");
+      return { coords: { lat: data.location.latitude, lng: data.location.longitude }, billable: true };
+    } catch (err) {
+      // Network error / timeout — not billable
+      logger.error({ err, placeId }, "places_details_exception");
+      return { coords: null, billable: false };
+    }
+  }
+
+  // Text Search — IDs only (Unlimited Free SKU). Returns a place_id for the query.
+  private async findPlaceIdByText(query: string, apiKey: string): Promise<string | null> {
+    try {
+      logger.debug({ query }, "places_text_search_start");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "places.id",
+        },
+        body: JSON.stringify({ textQuery: query, pageSize: 1 }),
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => "(unreadable)");
+        logger.error({ status: response.status, body: errorBody }, "places_text_search_error");
+        return null;
       }
 
-      // Pattern 2: Google Maps /@lat,lng format
-      const atPattern = /@(-?\d+\.?\d*),(-?\d+\.?\d*)/;
-      match = cleanUrl.match(atPattern);
-      if (match) {
-        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-      }
-
-      // Pattern 3: /maps/place/NAME/@lat,lng
-      const placePattern = /\/maps\/place\/[^/]+\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/;
-      match = cleanUrl.match(placePattern);
-      if (match) {
-        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-      }
-
-      // Pattern 4: Apple Maps ll=lat,lng
-      const llPattern = /[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/;
-      match = cleanUrl.match(llPattern);
-      if (match) {
-        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-      }
-
-      // Pattern 5: Direct coordinate format lat,lng (no URL)
-      const directPattern = /^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/;
-      match = cleanUrl.match(directPattern);
-      if (match) {
-        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-      }
-
-      return null;
-    } catch (error) {
+      const data = (await response.json()) as { places?: { id: string }[] };
+      const placeId = data.places?.[0]?.id ?? null;
+      return placeId;
+    } catch (err) {
+      logger.error({ err }, "places_text_search_exception");
       return null;
     }
   }
 
-  async extractCoordinatesWithBrowser(url: string): Promise<{ lat: number; lng: number } | null> {
-    let browser;
-    try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
-
-      const page = await browser.newPage();
-
-      // Block unnecessary resources to speed up loading
-      await page.setRequestInterception(true);
-      page.on("request", (request) => {
-        const resourceType = request.resourceType();
-        if (["image", "font", "media"].includes(resourceType)) {
-          request.abort();
-        } else {
-          request.continue();
-        }
-      });
-
-      // Set a reasonable timeout with networkidle0 for faster loading
-      await page.goto(url, {
-        waitUntil: "networkidle0",
-        timeout: 15000,
-      });
-
-      // Wait for map to load - optimized to 2.5s for reliability
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-
-      // Try to extract coordinates from the page URL after redirects
-      const finalUrl = page.url();
-      const coordinates = this.extractCoordinates(finalUrl);
-      if (coordinates) {
-        await browser.close();
-        return coordinates;
-      }
-
-      // Extract coordinates using multiple strategies
-      const extractedCoords = await page.evaluate(() => {
-        // Look for coordinate arrays [lat, lng] with at least 4 decimal places
-        const searchForCoords = (text: string): { lat: number; lng: number } | null => {
-          const arrayPattern = /\[(-?\d+\.\d{4,}),\s*(-?\d+\.\d{4,})\]/g;
-          let match;
-          while ((match = arrayPattern.exec(text)) !== null) {
-            const lat = parseFloat(match[1]);
-            const lng = parseFloat(match[2]);
-            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-              return { lat, lng };
-            }
-          }
-          return null;
-        };
-
-        // Search all script tags
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const scripts = (document as any).querySelectorAll("script");
-        for (const script of scripts) {
-          const content = script.textContent || "";
-          const coords = searchForCoords(content);
-          if (coords) return coords;
-        }
-
-        // Look in meta tags
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const metaTags = (document as any).querySelectorAll("meta");
-        for (const tag of metaTags) {
-          const content = tag.getAttribute("content") || "";
-          const coords = searchForCoords(content);
-          if (coords) return coords;
-        }
-
-        return null;
-      });
-
-      await browser.close();
-      return extractedCoords;
-    } catch (error) {
-      if (browser) {
-        await browser.close();
-      }
-      console.error("Error extracting coordinates with browser:", error);
-      return null;
+  async geocodeApiCall(placeId?: string, query?: string): Promise<GeocodeResult> {
+    const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
+    if (!apiKey) throw new Error("GOOGLE_GEOCODING_API_KEY is not configured");
+    if (placeId) return this.fetchByPlaceId(placeId, apiKey);
+    if (query) {
+      const discoveredId = await this.findPlaceIdByText(query, apiKey);
+      if (discoveredId) return this.fetchByPlaceId(discoveredId, apiKey);
     }
+
+    return { coords: null, billable: false };
   }
 }

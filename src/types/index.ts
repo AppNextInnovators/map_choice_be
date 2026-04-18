@@ -6,6 +6,7 @@ declare global {
   namespace Express {
     interface Request {
       appCheckToken?: VerifyAppCheckTokenResponse;
+      uid?: string;
     }
   }
 }

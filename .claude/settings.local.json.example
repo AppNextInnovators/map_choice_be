@@ -1,0 +1,16 @@
+{
+  "_readme": "Copy this file to settings.local.json — it is gitignored and personal to you.",
+
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pnpm *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)"
+    ]
+  }
+}
