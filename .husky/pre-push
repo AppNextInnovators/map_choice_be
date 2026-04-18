@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Prevent pushing directly to main
+BRANCH=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+if [ "$BRANCH" = "main" ]; then
+  echo "Direct push to main is not allowed. Open a pull request."
+  exit 1
+fi
+
+# Run tests before push
+echo "Running tests..."
+npm test -- --ci
+if [ $? -ne 0 ]; then
+  echo "Tests failed. Push aborted."
+  exit 1
+fi

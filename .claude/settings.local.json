@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pnpm *)",
+      "Bash(grep -v '^\\\\s*$')",
+      "Bash(npm test:*)",
+      "Bash(grep -r \"axios\\\\|fetch\\\\|http\\\\|api\\\\|endpoint\" /Users/rakibulhasan/Desktop/personal/projects/map_choice/map_choice_app/app --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"map\\\\|endpoint\\\\|url\\\\|backend\" /Users/rakibulhasan/Desktop/personal/projects/map_choice/map_choice_app/components --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"auth\\\\|Auth\\\\|user\\\\|User\\\\|login\\\\|Login\\\\|sign\\\\|Sign\" /Users/rakibulhasan/Desktop/personal/projects/map_choice/map_choice_app/app --include=*.tsx --include=*.ts)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)"
+    ]
+  }
+}
